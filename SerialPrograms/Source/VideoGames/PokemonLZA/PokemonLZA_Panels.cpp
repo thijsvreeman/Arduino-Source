@@ -28,6 +28,7 @@
 #include "Programs/Farming/PokemonLZA_RestaurantFarmer.h"
 #include "Programs/Farming/PokemonLZA_MegaShardFarmer.h"
 #include "Programs/Farming/PokemonLZA_JacintheInfiniteFarmer.h"
+#include "Programs/Farming/PokemonLZA_RogueMegaFighter.h"
 #include "Programs/Farming/PokemonLZA_FriendshipFarmer.h"
 #include "Programs/Farming/PokemonLZA_InPlaceCatcher.h"
 #include "Programs/Farming/PokemonLZA_WigglytuffFarmer.h"
@@ -90,6 +91,7 @@ std::vector<PanelEntry> PanelListFactory::make_panels() const{
     ret.emplace_back(make_SingleSwitchProgram<RestaurantFarmer>());
     ret.emplace_back(make_SingleSwitchProgram<MegaShardFarmer>());
     ret.emplace_back(make_SingleSwitchProgram<JacintheInfiniteFarmer>());
+    ret.emplace_back(make_SingleSwitchProgram<RogueMegaFighter>());
     ret.emplace_back(make_SingleSwitchProgram<FriendshipFarmer>());
     ret.emplace_back(make_SingleSwitchProgram<InPlaceCatcher>());
     ret.emplace_back(make_SingleSwitchProgram<WigglytuffFarmer>());

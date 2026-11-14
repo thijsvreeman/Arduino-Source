@@ -2233,6 +2233,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Programs/Farming/PokemonLZA_MegaShardFarmer.h
     Source/VideoGames/PokemonLZA/Programs/Farming/PokemonLZA_RestaurantFarmer.cpp
     Source/VideoGames/PokemonLZA/Programs/Farming/PokemonLZA_RestaurantFarmer.h
+    Source/VideoGames/PokemonLZA/Programs/Farming/PokemonLZA_RogueMegaFighter.cpp
+    Source/VideoGames/PokemonLZA/Programs/Farming/PokemonLZA_RogueMegaFighter.h
     Source/VideoGames/PokemonLZA/Programs/Farming/PokemonLZA_WigglytuffFarmer.cpp
     Source/VideoGames/PokemonLZA/Programs/Farming/PokemonLZA_WigglytuffFarmer.h
     Source/VideoGames/PokemonLZA/Programs/NonShinyHunting/PokemonLZA_StatsReset.cpp
