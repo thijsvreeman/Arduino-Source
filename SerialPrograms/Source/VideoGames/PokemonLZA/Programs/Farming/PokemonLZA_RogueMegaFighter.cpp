@@ -170,7 +170,7 @@ char read_marker(const ImageViewRGB32& image, double cx, double cy){
                 continue;
             }
             Rgb c = rgb_at(image, (size_t)xx, (size_t)yy);
-            red   += c.r > 170 && c.g < 120 && c.r - c.b > 40;
+            red   += c.r > 170 && c.g < 120 && c.r - c.b > 70;    //  > 70 so magenta arena flames don't count.
             cyan  += c.r < 110 && c.g > 150 && c.b > 170;
             white += c.r > 200 && c.g > 170 && c.b > 200;
         }
@@ -342,8 +342,10 @@ private:
 
 
 //  Lock on (hold ZL) and use one move. Top = X, Left = Y, Right = A, Bottom = B.
+//  The move is pressed 400ms after ZL so the lock-on and move palette are up first;
+//  pressed together, Y would dodge instead of using the left move.
 void use_move(ProControllerContext& context, Button move, bool plus){
-    ssf_press_button(context, BUTTON_ZL, 0ms, 800ms, 200ms);
+    ssf_press_button(context, BUTTON_ZL, 400ms, 1200ms, 200ms);
     if (plus){
         ssf_press_button(context, BUTTON_PLUS, 320ms, 840ms);
     }
@@ -407,6 +409,7 @@ void RogueMegaFighter::program(SingleSwitchProgramEnvironment& env, ProControlle
     WallClock last_try[4] = {};
     WallClock last_focus_energy = {};
     WallClock last_roll = {};
+    WallClock last_me_seen = current_time();
     WallClock last_boss_seen = current_time();  //  Reset here: the setup above takes ~10 seconds.
 
     size_t style = LEARN_MOVEMENT ? learner.pick() : 0;
@@ -462,6 +465,11 @@ void RogueMegaFighter::program(SingleSwitchProgramEnvironment& env, ProControlle
                 env.log("Took a hit: -" + std::to_string((int)(100 * lost)) + "% HP", COLOR_ORANGE);
             }
             last_hp = hud.my_hp;
+            last_me_seen = now;
+        }
+        //  Main Pokemon fainted: its HP was nearly gone and its bar has disappeared.
+        if (last_hp >= 0 && last_hp < 0.15 && now - last_me_seen > 5s){
+            break;
         }
 
         //  New boss entry in the log = the boss just used a move.
@@ -527,8 +535,8 @@ void RogueMegaFighter::program(SingleSwitchProgramEnvironment& env, ProControlle
         learner.save();
     }
 
-    bool lost = last_hp >= 0 && last_hp < 0.1;
-    std::string result = lost ? "Probably lost (HP very low)." : "Boss defeated.";
+    bool lost = last_hp >= 0 && last_hp < 0.15;
+    std::string result = lost ? "Lost: main " + STRING_POKEMON + " fainted." : "Boss defeated.";
     int seconds = (int)std::chrono::duration_cast<std::chrono::seconds>(current_time() - fight_start).count();
     std::string report =
         result + " Fight took " + std::to_string(seconds) + "s, HP lost " +
