@@ -396,13 +396,15 @@ void RogueMegaFighter::program(SingleSwitchProgramEnvironment& env, ProControlle
         pbf_press_dpad(context, DPAD_LEFT, 160ms, 2000ms);
         stats.attacks += 2;
         env.update_stats();
+        context.wait_for_all_requests();    //  Button presses are queued; wait until the setup has actually happened.
     }
 
     MarkerRow mine, boss;
-    WallClock last_try[4] = {WallClock::min(), WallClock::min(), WallClock::min(), WallClock::min()};
-    WallClock last_focus_energy = WallClock::min();
-    WallClock last_roll = WallClock::min();
-    WallClock last_boss_seen = current_time();
+    //  Default-constructed = 1970, so "now - last" is large. (WallClock::min() would overflow.)
+    WallClock last_try[4] = {};
+    WallClock last_focus_energy = {};
+    WallClock last_roll = {};
+    WallClock last_boss_seen = current_time();  //  Reset here: the setup above takes ~10 seconds.
 
     size_t style = LEARN_MOVEMENT ? learner.pick() : 0;
     WallClock segment_start = current_time();
