@@ -44,6 +44,7 @@ private:
     SimpleIntegerOption<uint16_t> FOCUS_ENERGY_SECONDS;
     BooleanCheckBoxOption LEARN_MOVEMENT;
     SimpleIntegerOption<uint16_t> MAX_FIGHT_MINUTES;
+    BooleanCheckBoxOption SAVE_FRAMES;
 
     EventNotificationsOption NOTIFICATIONS;
 };

@@ -9,6 +9,9 @@
 #include <sstream>
 #include "Common/Cpp/Time.h"
 #include "Common/Cpp/Filesystem/FileIO.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
+#include "Common/Cpp/PrettyPrint.h"
+#include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
@@ -17,6 +20,7 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
+#include "ML/Inference/ML_YOLOv5Detector.h"
 #include "Pokemon/Pokemon_Strings.h"
 #include "PokemonLZA_RogueMegaFighter.h"
 
@@ -91,6 +95,13 @@ RogueMegaFighter::RogueMegaFighter()
         LockMode::LOCK_WHILE_RUNNING,
         6, 1, 30
     )
+    , SAVE_FRAMES(
+        "<b>Save training frames:</b><br>"
+        "Save a screenshot every 3 seconds during the fight to RogueMegaFighter-Frames, "
+        "to train the boss detector further.",
+        LockMode::LOCK_WHILE_RUNNING,
+        true
+    )
     , NOTIFICATIONS({
         &NOTIFICATION_PROGRAM_FINISH,
         &NOTIFICATION_ERROR_FATAL,
@@ -100,6 +111,7 @@ RogueMegaFighter::RogueMegaFighter()
     PA_ADD_OPTION(FOCUS_ENERGY_SECONDS);
     PA_ADD_OPTION(LEARN_MOVEMENT);
     PA_ADD_OPTION(MAX_FIGHT_MINUTES);
+    PA_ADD_OPTION(SAVE_FRAMES);
     PA_ADD_OPTION(NOTIFICATIONS);
 }
 
@@ -422,6 +434,24 @@ void RogueMegaFighter::program(SingleSwitchProgramEnvironment& env, ProControlle
     env.log(std::string("Movement style: ") + STYLES[style].name);
     env.console.overlay().add_log(std::string("Moving: ") + STYLES[style].name);
 
+    //  Boss detector (trained on fight recordings). Optional: without the file the program
+    //  just strafes without keeping distance.
+    const std::string BOSS_MODEL = "PokemonLZA/RogueMegaBoss.onnx";
+    std::unique_ptr<ML::YOLOv5Detector> boss_finder;
+    if (Filesystem::exists(RESOURCE_PATH() + BOSS_MODEL)){
+        boss_finder = std::make_unique<ML::YOLOv5Detector>(BOSS_MODEL);
+        env.log("Boss detector loaded.", COLOR_BLUE);
+    }else{
+        env.log("No boss detector found at Resources/" + BOSS_MODEL + ". Not keeping distance.", COLOR_ORANGE);
+    }
+
+    //  Save a frame every few seconds as training material for the boss detector.
+    const std::string FRAME_FOLDER = "RogueMegaFighter-Frames/";
+    if (SAVE_FRAMES){
+        Filesystem::create_directories(FRAME_FOLDER);
+    }
+    WallClock last_frame_saved = {};
+
     enum Slot{ TOP, LEFT, RIGHT, BOTTOM };
     static const Button SLOT_BUTTON[] = {BUTTON_X, BUTTON_Y, BUTTON_A, BUTTON_B};
     const Milliseconds retry_gap = 5000ms;
@@ -515,9 +545,33 @@ void RogueMegaFighter::program(SingleSwitchProgramEnvironment& env, ProControlle
             "%, me " + mine.str() + ", boss " + boss.str() + " -> " + SLOT_NAME[slot]
         );
 
+        if (SAVE_FRAMES && now - last_frame_saved > 3s){
+            screen->save(FRAME_FOLDER + now_to_filestring() + ".jpg");
+            last_frame_saved = now;
+        }
+
+        //  Keep distance: the boss's on-screen height says how close it is.
+        //  Too close (contact moves land) -> back off. Too far -> close in.
+        double forward = 0;
+        if (boss_finder && boss_finder->detect(screen)){
+            const ML::YOLOv5Detector::DetectionBox* best = nullptr;
+            for (const auto& b : boss_finder->detected_boxes()){
+                if (best == nullptr || b.score > best->score){
+                    best = &b;
+                }
+            }
+            if (best->box.height > 0.65){
+                forward = -1.0;
+            }else if (best->box.height < 0.2){
+                forward = 0.6;
+            }
+            env.log("Boss box height " + std::to_string((int)(100 * best->box.height)) + "% -> " +
+                (forward < 0 ? "back off" : forward > 0 ? "close in" : "hold distance"));
+        }
+
         //  Strafe for the whole step, dodge if wanted, then lock on and attack.
         double strafe = ((now - fight_start) / s.strafe_switch) % 2 == 0 ? 1.0 : -1.0;
-        ssf_press_left_joystick(context, {strafe, 0}, 0ms, 1600ms, 0ms);
+        ssf_press_left_joystick(context, {strafe, forward}, 0ms, 1600ms, 0ms);
         bool roll = (s.roll_on_boss_move && boss_moved) ||
             (s.roll_every > 0ms && now - last_roll > s.roll_every);
         if (roll){
