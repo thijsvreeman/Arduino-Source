@@ -69,7 +69,7 @@ RogueMegaFighter::RogueMegaFighter()
     : USE_SETUP_POKEMON(
         "<b>Use setup " + STRING_POKEMON + " first:</b><br>"
         "Send out the " + STRING_POKEMON + " to the right of your lead (D-pad right, up), use its left move "
-        "(Trick-or-Treat) and right move (Light Screen), then call it back and send out the lead (D-pad down, left, up).",
+        "(Trick-or-Treat) and right move (Light Screen), then swap back to the lead (D-pad left, up).",
         LockMode::LOCK_WHILE_RUNNING,
         true
     )
@@ -386,7 +386,7 @@ void RogueMegaFighter::program(SingleSwitchProgramEnvironment& env, ProControlle
 
     const WallClock fight_start = current_time();
 
-    //  D-pad left/right selects a party member, up sends it out, down calls it back.
+    //  D-pad left/right selects a party member, up sends it out (swapping out whoever is out).
     if (USE_SETUP_POKEMON){
         env.console.overlay().add_log("Setup: Trick-or-Treat, Light Screen");
         pbf_press_dpad(context, DPAD_RIGHT, 160ms, 500ms);
@@ -395,7 +395,6 @@ void RogueMegaFighter::program(SingleSwitchProgramEnvironment& env, ProControlle
         pbf_wait(context, 2500ms);
         use_move(context, BUTTON_A, false);     //  Light Screen
         pbf_wait(context, 2500ms);
-        pbf_press_dpad(context, DPAD_DOWN, 160ms, 1500ms);
         pbf_press_dpad(context, DPAD_LEFT, 160ms, 500ms);
         stats.attacks += 2;
         env.update_stats();
